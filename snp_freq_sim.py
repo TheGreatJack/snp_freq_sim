@@ -2,8 +2,8 @@ from random import choices
 import random
 from collections import Counter
 import numpy as np
+import argparse # Import the argparse module
 import sys
-
 
 def get_observable_frequencies(n):
     """
@@ -25,13 +25,13 @@ def get_observable_frequencies(n):
             return
         for i in range(1, remaining_sum - (parts_needed - 1) + 1):
             if i > 0:
-                current_partition.append(i)        
+                current_partition.append(i)
                 yield from get_partitions(remaining_sum - i, parts_needed - 1, current_partition)
                 current_partition.pop()  # Backtrack
-    
+
 
     for c in range(2, n + 1):
-        
+
         unique_frequency_sets = set()
         partitions = get_partitions(n, c, [])
         partitions = [p for p in partitions]
@@ -51,7 +51,7 @@ def snp_num_prob_gen(p, factor):
     probs = {2:1}
     for i in range(p,2,-1):
         probs[i] = 10 ** -(i+factor-2)
-    
+
     total_prob = sum(probs.values())
 
     for i in probs.keys():
@@ -127,26 +127,47 @@ def sample_dna_bases(n):
 
 
 def main():
-    n_snps = 1000
-    p = 6
-    f = 0
-    d = "poisson"
-    lam = 10
-    
-    snp_num_prob = snp_num_prob_gen(p, f)
+    # --- Argument Parser Setup ---
+    parser = argparse.ArgumentParser(description="Simulate SNP data with varying parameters.") # Creates an ArgumentParser object which will hold the information necessary to parse the command line into Python data types.
+    parser.add_argument('--n_snps', type=int, default=1000, help='Number of SNPs to simulate (integer >= 1)') # Adds argument for n_snps, with type int, default 1000 and help message.
+    parser.add_argument('--p', type=int, default=6, help='Ploidy (integer >= 1)') # Adds argument for ploidy
+    parser.add_argument('--f', type=int, default=0, help='Correction factor (positive integer)') # Adds argument for correction factor
+    parser.add_argument('--d', type=str, default="poisson", choices=['poisson'], help='Sequence depth distribution (default: poisson)') # Adds argument for distribution, with choices limited to 'poisson' for now.
+    parser.add_argument('--lam', type=int, default=10, help='Lambda for Poisson distribution (integer >= 1)') # Adds argument for lambda
 
-    snp_num_counts= Counter(choices(list(snp_num_prob.keys()),weights=snp_num_prob.values(), k = n_snps))
-    
+    args = parser.parse_args() # Parses the arguments and returns an object containing the arguments.
+
+    # --- Input Validation ---
+    if args.n_snps < 1: # Checks if n_snps is less than 1
+        raise ValueError("n_snps must be an integer greater than or equal to 1") # Raises ValueError if condition is met
+    if args.p < 1: # Checks if p is less than 1
+        raise ValueError("p must be an integer greater than or equal to 1") # Raises ValueError if condition is met
+    if args.f < 0: # Checks if f is less than 0 (not positive)
+        raise ValueError("f must be a positive integer") # Raises ValueError if condition is met
+    if args.lam < 1: # Checks if lam is less than 1
+        raise ValueError("lam must be an integer greater than or equal to 1") # Raises ValueError if condition is met
+
+
+    n_snps = args.n_snps # Assigns the parsed n_snps value
+    p = args.p # Assigns the parsed p value
+    f = args.f # Assigns the parsed f value
+    d = args.d # Assigns the parsed d value
+    lam = args.lam # Assigns the parsed lam value
+
+
+    snp_num_prob = snp_num_prob_gen(p, f) # Calls snp_num_prob_gen with p and f from arguments
+
+    snp_num_counts= Counter(choices(list(snp_num_prob.keys()),weights=snp_num_prob.values(), k = n_snps)) # Uses n_snps from arguments
+
     print(snp_num_counts,file=sys.stderr)
 
     # Generate ploidy related class frequency distributions
-    
-    obs_freqs = get_observable_frequencies(p)
-    
-   
+
+    obs_freqs = get_observable_frequencies(p) # Uses p from arguments
+
 
     site_id = 0
-    
+
      # Generate depth distributions per each snp num
         # Iterate over each of the previous distributions
             # Select a random possible state from the class frequencies
@@ -161,7 +182,7 @@ def main():
 
 
     for snp_num,count in snp_num_counts.items():
-        for depth in sample_truncated_poisson(lam, snp_num, count):
+        for depth in sample_truncated_poisson(lam, snp_num, count): # Uses lam from arguments
             random_snp_weights = choices(obs_freqs[snp_num-2], k=1)[0]
             dna_bases_site = sample_dna_bases(snp_num)
             #print(dna_bases_site,random_snp_weights)
@@ -172,11 +193,6 @@ def main():
                 print(site_id,snp_num,base,count,depth,sep="\t")
             site_id += 1
 
-    
 
-
-
-
-
-
-main()
+if __name__ == "__main__":
+    main()
