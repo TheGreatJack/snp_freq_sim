@@ -2,6 +2,7 @@ from random import choices
 import random
 from collections import Counter
 import numpy as np
+import sys
 
 
 def get_observable_frequencies(n):
@@ -136,7 +137,7 @@ def main():
 
     snp_num_counts= Counter(choices(list(snp_num_prob.keys()),weights=snp_num_prob.values(), k = n_snps))
     
-    print(snp_num_counts)
+    print(snp_num_counts,file=sys.stderr)
 
     # Generate ploidy related class frequency distributions
     
