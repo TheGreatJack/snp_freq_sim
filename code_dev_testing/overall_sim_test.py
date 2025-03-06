@@ -129,12 +129,26 @@ def sample_dna_bases(n):
 def parse_comma_separated_int(value):
     """
     Parses a comma-separated string of integers into a list of integers.
-    Raises argparse.ArgumentTypeError if parsing fails or values are not positive integers.
+    Raises argparse.ArgumentTypeError if parsing fails or vsample_dna_basesalues are not positive integers.
     """
     try:
         int_list = [int(x) for x in value.split(',')] # Splits the string by comma and converts each part to int
         for i in int_list: # Checks each integer in the list
             if i < 1: # If any integer is less than 1
+                raise argparse.ArgumentTypeError(f"Values must be positive integers, but got: {value}") # Raise error if not positive
+        return int_list # Returns the list of integers
+    except ValueError: # Catches errors during int conversion
+        raise argparse.ArgumentTypeError(f"Invalid comma-separated integers: {value}") # Raise error if conversion fails
+
+def parse_comma_separated_int_f(value):
+    """
+    Parses a comma-separated string of integers into a list of integers.
+    Raises argparse.ArgumentTypeError if parsing fails or values are not positive integers.
+    """
+    try:
+        int_list = [int(x) for x in value.split(',')] # Splits the string by comma and converts each part to int
+        for i in int_list: # Checks each integer in the list
+            if i < 0: # If any integer is less than 1
                 raise argparse.ArgumentTypeError(f"Values must be positive integers, but got: {value}") # Raise error if not positive
         return int_list # Returns the list of integers
     except ValueError: # Catches errors during int conversion
@@ -158,16 +172,28 @@ def calculate_hash(n_snps, p, f, lam):
     hash_object = hashlib.md5(param_str.encode()) # Encodes the string and creates MD5 hash object
     return hash_object.hexdigest() # Returns the hexadecimal representation of the hash
 
+def generate_line_to_write(hist,p,f,lam,n_snps,rep_num):
+    line_to_write = ""
+    for i, num in enumerate(hist):
+        formatted_num = "{:.5f}".format(float(num)) # Format to 5 decimal places
+        line_to_write += formatted_num
+        if i < len(hist) - 1: # Add tab if not the last number
+            line_to_write += "\t"
+    for param in [p,f,lam,n_snps,rep_num]:
+        line_to_write += "\t" + str(param)
+    line_to_write += "\n"
+    return line_to_write
+
 def main():
     # --- Argument Parser Setup ---
     parser = argparse.ArgumentParser(description="Simulate SNP data for multiple parameter combinations and repetitions.")
-    parser.add_argument('--n_snps', type=parse_comma_separated_int, default="1000", help='Number of SNPs to simulate (integer >= 1), comma-separated list for multiple values')
-    parser.add_argument('--p', type=parse_comma_separated_int, default="6", help='Ploidy (integer >= 1), comma-separated list for multiple values')
-    parser.add_argument('--f', type=parse_comma_separated_int, default="0", help='Correction factor (positive integer), comma-separated list for multiple values')
-    parser.add_argument('--d', type=str, default="poisson", choices=['poisson'], help='Sequence depth distribution (default: poisson)')
-    parser.add_argument('--lam', type=parse_comma_separated_int, default="10", help='Lambda for Poisson distribution (integer >= 1), comma-separated list for multiple values')
-    parser.add_argument('--reps', type=int, default=1, help='Number of repetitions per parameter combination (positive integer)')
-    parser.add_argument('--k_bins', type=int, default=10, help='Number of bins for the histogram of observed proportions (positive integer)')
+    parser.add_argument('-n_snps', type=parse_comma_separated_int, default="1000", help='Number of SNPs to simulate (integer >= 1), comma-separated list for multiple values')
+    parser.add_argument('-p', type=parse_comma_separated_int, default="6", help='Ploidy (integer >= 1), comma-separated list for multiple values')
+    parser.add_argument('-f', type=parse_comma_separated_int_f, default="0", help='Correction factor (positive integer), comma-separated list for multiple values')
+    parser.add_argument('-d', type=str, default="poisson", choices=['poisson'], help='Sequence depth distribution (default: poisson)')
+    parser.add_argument('-lam', type=parse_comma_separated_int, default="10", help='Lambda for Poisson distribution (integer >= 1), comma-separated list for multiple values')
+    parser.add_argument('-reps', type=int, default=1, help='Number of repetitions per parameter combination (positive integer)')
+    parser.add_argument('-k_bins', type=int, default=10, help='Number of bins for the histogram of observed proportions (positive integer)')
 
 
     args = parser.parse_args()
@@ -195,14 +221,18 @@ def main():
         base_hash = calculate_hash(n_snps, p, f, lam) # Calculate hash for the parameter combination
         all_obs_props = [] # List to store all observed proportions for histogram generation
 
+
+        snp_num_prob = snp_num_prob_gen(p, f) # Generate SNP number probabilities
+        obs_freqs = get_observable_frequencies(p) # Get observable frequencies for ploidy p
+
         for rep_num in range(1, reps + 1): # Loops through repetitions
             output_filename_raw = generate_output_filename(base_hash, n_snps, p, f, lam, rep_num, "raw_data") # Generates filename for raw data
             print(f"Running simulation for n_snps={n_snps}, p={p}, f={f}, lam={lam}, rep={rep_num}") # Prints current simulation parameters
 
-            snp_num_prob = snp_num_prob_gen(p, f) # Generate SNP number probabilities
+            
             snp_num_counts= Counter(choices(list(snp_num_prob.keys()),weights=snp_num_prob.values(), k = n_snps)) # Count of each snp number
 
-            obs_freqs = get_observable_frequencies(p) # Get observable frequencies for ploidy p
+            
 
             site_id = 0
             current_run_obs_props = [] # List to store observed proportions for the current run
@@ -221,7 +251,7 @@ def main():
                         output_lines.append(output_line) # Add line to output lines
                         current_run_obs_props.append(obs_prop) # Add observed proportion to current run list
                         #print(output_line) # Print raw data to standard output (optional, for debugging)
-                        site_id += 1 # Increment site ID
+                    site_id += 1 # Increment site ID
 
             all_obs_props.append(current_run_obs_props) # Extend the list of all observed proportions with the current run's proportions
 
@@ -239,13 +269,8 @@ def main():
             for data_list in all_obs_props: # Iterate through histogram bins
                 hist, bin_edges = np.histogram(data_list, bins=k_bins, range=(0.0, 1.0), density = False) # Generate histogram of observed proportions
                 hist = hist/len(data_list)
-                line_to_write = ""
-                for i, num in enumerate(hist):
-                    formatted_num = "{:.5f}".format(float(num)) # Format to 5 decimal places
-                    line_to_write += formatted_num
-                    if i < len(hist) - 1: # Add tab if not the last number
-                        line_to_write += "\t"
-                outfile.write(line_to_write + "\n") # Add newline at the end of the line
+                line_to_write = generate_line_to_write(hist,p,f,lam,n_snps,rep_num)
+                outfile.write(line_to_write) # Add newline at the end of the line
     
         print(f"Histograms saved to: {output_filename_hist}") # Print message indicating histogram file saved
 

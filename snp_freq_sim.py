@@ -129,11 +129,11 @@ def sample_dna_bases(n):
 def main():
     # --- Argument Parser Setup ---
     parser = argparse.ArgumentParser(description="Simulate SNP data with varying parameters.") # Creates an ArgumentParser object which will hold the information necessary to parse the command line into Python data types.
-    parser.add_argument('--n_snps', type=int, default=1000, help='Number of SNPs to simulate (integer >= 1)') # Adds argument for n_snps, with type int, default 1000 and help message.
-    parser.add_argument('--p', type=int, default=6, help='Ploidy (integer >= 1)') # Adds argument for ploidy
-    parser.add_argument('--f', type=int, default=0, help='Correction factor (positive integer)') # Adds argument for correction factor
-    parser.add_argument('--d', type=str, default="poisson", choices=['poisson'], help='Sequence depth distribution (default: poisson)') # Adds argument for distribution, with choices limited to 'poisson' for now.
-    parser.add_argument('--lam', type=int, default=10, help='Lambda for Poisson distribution (integer >= 1)') # Adds argument for lambda
+    parser.add_argument('-n_snps', type=int, default=1000, help='Number of SNPs to simulate (integer >= 1)') # Adds argument for n_snps, with type int, default 1000 and help message.
+    parser.add_argument('-p', type=int, default=6, help='Ploidy (integer >= 1)') # Adds argument for ploidy
+    parser.add_argument('-f', type=int, default=0, help='Correction factor (positive integer)') # Adds argument for correction factor
+    parser.add_argument('-d', type=str, default="poisson", choices=['poisson'], help='Sequence depth distribution (default: poisson)') # Adds argument for distribution, with choices limited to 'poisson' for now.
+    parser.add_argument('-lam', type=int, default=10, help='Lambda for Poisson distribution (integer >= 1)') # Adds argument for lambda
 
     args = parser.parse_args() # Parses the arguments and returns an object containing the arguments.
 
